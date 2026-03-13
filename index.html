@@ -606,50 +606,94 @@
         // Track current section
         let currentIndex = 0;
         let isTransitioning = false;
-        let isBoundaryLocked = false;
-        let boundaryLockTimer = null;
-        let lockedIndex = 0;
-        let hasUserMoved = false;
+        let lockUntil = 0;
 
         const BOUNDARY_LOCK_MS = 5000;
-        const LOCKED_KEYS = new Set([
-            'ArrowUp',
-            'ArrowDown',
-            'PageUp',
-            'PageDown',
-            'Home',
-            'End',
-            ' '
-        ]);
+        const KEY_SCROLL_MAP = {
+            ArrowDown: 120,
+            ArrowUp: -120,
+            PageDown: 500,
+            PageUp: -500,
+            ' ': 500
+        };
 
-        function setRootScrollLocked(locked) {
-            document.documentElement.style.overflowY = locked ? 'hidden' : 'scroll';
+        function isIterationSection(section) {
+            return section && section.classList.contains('iteration-section');
         }
 
-        function lockBoundaryAt(index) {
-            if (index < 0 || index >= sections.length) return;
+        function isBoundaryLocked() {
+            return Date.now() < lockUntil;
+        }
 
-            if (boundaryLockTimer) {
-                clearTimeout(boundaryLockTimer);
+        function startBoundaryCooldown() {
+            lockUntil = Date.now() + BOUNDARY_LOCK_MS;
+        }
+
+        function getFrameMetrics(frame) {
+            try {
+                const win = frame.contentWindow;
+                const doc = frame.contentDocument;
+                if (!win || !doc) return null;
+                const root = doc.documentElement;
+                const body = doc.body;
+                const scrollTop = win.scrollY || root.scrollTop || body.scrollTop || 0;
+                const scrollHeight = Math.max(
+                    root.scrollHeight || 0,
+                    body ? body.scrollHeight : 0
+                );
+                const viewportHeight = win.innerHeight || frame.clientHeight || 0;
+                const maxScroll = Math.max(0, scrollHeight - viewportHeight);
+                return { win, scrollTop, maxScroll };
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function goToSection(nextIndex) {
+            if (nextIndex < 0 || nextIndex >= sections.length) return false;
+            if (isBoundaryLocked()) return true;
+            startBoundaryCooldown();
+            sections[nextIndex].scrollIntoView({ behavior: 'smooth' });
+            return true;
+        }
+
+        function handleIterationDelta(deltaY) {
+            const section = sections[currentIndex];
+            if (!isIterationSection(section)) return false;
+
+            const frame = section.querySelector('iframe');
+            if (!frame) return false;
+
+            const metrics = getFrameMetrics(frame);
+            if (!metrics) return false;
+
+            const { win, scrollTop, maxScroll } = metrics;
+            const down = deltaY > 0;
+            const up = deltaY < 0;
+
+            if (maxScroll <= 1) {
+                if (down) return goToSection(currentIndex + 1);
+                if (up) return goToSection(currentIndex - 1);
+                return true;
             }
 
-            isBoundaryLocked = true;
-            lockedIndex = index;
-            setRootScrollLocked(true);
+            if (down) {
+                if (scrollTop < maxScroll - 2) {
+                    win.scrollBy({ top: deltaY, behavior: 'auto' });
+                    return true;
+                }
+                return goToSection(currentIndex + 1);
+            }
 
-            sections[index].scrollIntoView({ behavior: 'auto' });
+            if (up) {
+                if (scrollTop > 2) {
+                    win.scrollBy({ top: deltaY, behavior: 'auto' });
+                    return true;
+                }
+                return goToSection(currentIndex - 1);
+            }
 
-            boundaryLockTimer = setTimeout(() => {
-                isBoundaryLocked = false;
-                setRootScrollLocked(false);
-            }, BOUNDARY_LOCK_MS);
-        }
-
-        function blockRootNavigation(event) {
-            if (!isBoundaryLocked) return;
-            event.preventDefault();
-            event.stopPropagation();
-            sections[lockedIndex].scrollIntoView({ behavior: 'auto' });
+            return true;
         }
 
         const observer = new IntersectionObserver((entries) => {
@@ -657,19 +701,8 @@
                 if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
                     const index = Array.from(sections).indexOf(entry.target);
                     if (index !== -1 && index !== currentIndex) {
-                        if (isBoundaryLocked) {
-                            sections[lockedIndex].scrollIntoView({ behavior: 'auto' });
-                            return;
-                        }
-
                         currentIndex = index;
                         updateDots(index);
-
-                        if (hasUserMoved) {
-                            lockBoundaryAt(index);
-                        }
-
-                        hasUserMoved = true;
                     }
                 }
             });
@@ -688,21 +721,26 @@
         // Click on dots to navigate
         dots.forEach((dot, i) => {
             dot.addEventListener('click', () => {
-                if (isBoundaryLocked) return;
+                if (isBoundaryLocked()) return;
+                startBoundaryCooldown();
                 sections[i].scrollIntoView({ behavior: 'smooth' });
             });
         });
 
-        window.addEventListener('wheel', blockRootNavigation, { passive: false, capture: true });
-
-        window.addEventListener('touchmove', blockRootNavigation, { passive: false, capture: true });
+        window.addEventListener('wheel', (event) => {
+            if (!isIterationSection(sections[currentIndex])) return;
+            const consumed = handleIterationDelta(event.deltaY);
+            if (!consumed) return;
+            event.preventDefault();
+        }, { capture: true });
 
         window.addEventListener('keydown', (event) => {
-            if (!isBoundaryLocked) return;
-            if (!LOCKED_KEYS.has(event.key)) return;
+            if (event.defaultPrevented) return;
+            if (!isIterationSection(sections[currentIndex])) return;
+            if (!(event.key in KEY_SCROLL_MAP)) return;
+            const consumed = handleIterationDelta(KEY_SCROLL_MAP[event.key]);
+            if (!consumed) return;
             event.preventDefault();
-            event.stopPropagation();
-            sections[lockedIndex].scrollIntoView({ behavior: 'auto' });
         }, { capture: true });
 
         // Continue button click
@@ -710,13 +748,7 @@
             if (isTransitioning) return;
             isTransitioning = true;
 
-            if (boundaryLockTimer) {
-                clearTimeout(boundaryLockTimer);
-                boundaryLockTimer = null;
-            }
-
-            isBoundaryLocked = false;
-            setRootScrollLocked(false);
+            lockUntil = 0;
 
             loopCount++;
             localStorage.setItem(STORAGE_KEY, loopCount);
@@ -731,7 +763,6 @@
                 currentLoopSpan.textContent = loopCount;
                 currentIndex = 0;
                 updateDots(0);
-                hasUserMoved = false;
 
                 // Apply new mutation
                 applyLoopMutation(loopCount);
