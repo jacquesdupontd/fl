@@ -599,8 +599,6 @@
         // Elements
         const continueBtn = document.getElementById('continue-loop');
         const currentLoopSpan = document.getElementById('current-loop');
-        const iterationIframes = document.querySelectorAll('.iteration-section iframe');
-        const SECTION_SWITCH_DELAY = 5000;
 
         // Init current loop display
         currentLoopSpan.textContent = loopCount;
@@ -608,121 +606,6 @@
         // Track current section
         let currentIndex = 0;
         let isTransitioning = false;
-        let sectionLockActive = false;
-        let sectionLockTimeout = null;
-
-        function lockSectionTransition() {
-            sectionLockActive = true;
-            document.documentElement.style.overflow = 'hidden';
-            document.body.style.overflow = 'hidden';
-
-            if (sectionLockTimeout) {
-                clearTimeout(sectionLockTimeout);
-            }
-
-            sectionLockTimeout = setTimeout(() => {
-                sectionLockActive = false;
-                document.documentElement.style.overflow = '';
-                document.body.style.overflow = '';
-                sectionLockTimeout = null;
-            }, SECTION_SWITCH_DELAY);
-        }
-
-        function getIterationScroller(section) {
-            if (!section || !section.classList.contains('iteration-section')) {
-                return null;
-            }
-
-            const iframe = section.querySelector('iframe');
-            if (!iframe || !iframe.contentWindow || !iframe.contentDocument) {
-                return null;
-            }
-
-            const doc = iframe.contentDocument;
-            const scroller = doc.scrollingElement || doc.documentElement || doc.body;
-
-            if (!scroller) {
-                return null;
-            }
-
-            return { iframe, scroller };
-        }
-
-        function activateSection(index, lockAfter = true) {
-            if (index < 0 || index >= sections.length || index === currentIndex) {
-                return;
-            }
-
-            sections[index].scrollIntoView({ behavior: 'smooth' });
-            currentIndex = index;
-            updateDots(currentIndex);
-
-            const targetScroller = getIterationScroller(sections[index]);
-            if (targetScroller) {
-                targetScroller.scroller.scrollTop = 0;
-            }
-
-            if (lockAfter) {
-                lockSectionTransition();
-            }
-        }
-
-        function routeWheelToIteration(event) {
-            if (isTransitioning) {
-                event.preventDefault();
-                return;
-            }
-
-            const deltaY = event.deltaY;
-            if (deltaY === 0) {
-                return;
-            }
-            const goingDown = deltaY > 0;
-            const targetIndex = currentIndex + (goingDown ? 1 : -1);
-
-            const activeSection = sections[currentIndex];
-            const iterationScroller = getIterationScroller(activeSection);
-
-            if (iterationScroller) {
-                const { iframe, scroller } = iterationScroller;
-                const maxScrollTop = scroller.scrollHeight - scroller.clientHeight;
-                const atTop = scroller.scrollTop <= 0;
-                const atBottom = scroller.scrollTop >= maxScrollTop - 1;
-
-                if ((goingDown && !atBottom) || (!goingDown && !atTop)) {
-                    event.preventDefault();
-                    iframe.contentWindow.scrollBy({ top: deltaY, left: 0, behavior: 'auto' });
-                    return;
-                }
-
-                event.preventDefault();
-                if (sectionLockActive) {
-                    return;
-                }
-
-                if (targetIndex >= 0 && targetIndex < sections.length) {
-                    activateSection(targetIndex, true);
-                }
-                return;
-            }
-
-            event.preventDefault();
-            if (sectionLockActive) {
-                return;
-            }
-
-            if (targetIndex >= 0 && targetIndex < sections.length) {
-                activateSection(targetIndex, true);
-            }
-        }
-
-        function bindIframeWheel(iframe) {
-            if (!iframe || !iframe.contentDocument) {
-                return;
-            }
-
-            iframe.contentDocument.addEventListener('wheel', routeWheelToIteration, { passive: false });
-        }
 
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
@@ -731,7 +614,6 @@
                     if (index !== -1 && index !== currentIndex) {
                         currentIndex = index;
                         updateDots(index);
-                        lockSectionTransition();
                     }
                 }
             });
@@ -741,71 +623,22 @@
 
         sections.forEach(section => observer.observe(section));
 
-        window.addEventListener('wheel', routeWheelToIteration, { passive: false });
-
-        window.addEventListener('keydown', (event) => {
-            const key = event.key;
-            const forward = key === 'ArrowDown' || key === 'PageDown' || key === ' ';
-            const backward = key === 'ArrowUp' || key === 'PageUp';
-
-            if (!forward && !backward) {
-                return;
-            }
-
-            event.preventDefault();
-            if (isTransitioning || sectionLockActive) {
-                return;
-            }
-
-            const targetIndex = currentIndex + (forward ? 1 : -1);
-            if (targetIndex >= 0 && targetIndex < sections.length) {
-                activateSection(targetIndex, true);
-            }
-        });
-
         function updateDots(index) {
             dots.forEach((dot, i) => {
                 dot.classList.toggle('active', i === index);
             });
         }
 
-        function resetIterationScrollPositions() {
-            document.querySelectorAll('.iteration-section').forEach((section) => {
-                const iterationScroller = getIterationScroller(section);
-                if (iterationScroller) {
-                    iterationScroller.scroller.scrollTop = 0;
-                }
-            });
-        }
-
         // Click on dots to navigate
         dots.forEach((dot, i) => {
             dot.addEventListener('click', () => {
-                if (isTransitioning || sectionLockActive) {
-                    return;
-                }
-                activateSection(i, true);
+                sections[i].scrollIntoView({ behavior: 'smooth' });
             });
-        });
-
-        iterationIframes.forEach((iframe) => {
-            iframe.addEventListener('load', () => {
-                const section = iframe.closest('.iteration-section');
-                const iterationScroller = getIterationScroller(section);
-                if (iterationScroller) {
-                    iterationScroller.scroller.scrollTop = 0;
-                }
-                bindIframeWheel(iframe);
-            });
-
-            if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
-                bindIframeWheel(iframe);
-            }
         });
 
         // Continue button click
         continueBtn.addEventListener('click', () => {
-            if (isTransitioning || sectionLockActive) return;
+            if (isTransitioning) return;
             isTransitioning = true;
 
             loopCount++;
@@ -821,7 +654,6 @@
                 currentLoopSpan.textContent = loopCount;
                 currentIndex = 0;
                 updateDots(0);
-                resetIterationScrollPositions();
 
                 // Apply new mutation
                 applyLoopMutation(loopCount);
