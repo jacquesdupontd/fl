@@ -666,7 +666,7 @@
             if (!frame) return false;
 
             const metrics = getFrameMetrics(frame);
-            if (!metrics) return true;
+            if (!metrics) return false;
 
             const { win, scrollTop, maxScroll } = metrics;
             const down = deltaY > 0;
@@ -695,14 +695,6 @@
             }
 
             return true;
-        }
-
-        function handleRootDelta(deltaY) {
-            const down = deltaY > 0;
-            const up = deltaY < 0;
-            if (!down && !up) return true;
-            if (down) return goToSection(currentIndex + 1);
-            return goToSection(currentIndex - 1);
         }
 
         function triggerButtonFlashAndClick(button) {
@@ -802,9 +794,8 @@
         });
 
         window.addEventListener('wheel', (event) => {
-            const consumed = isIterationSection(sections[currentIndex])
-                ? handleIterationDelta(event.deltaY)
-                : handleRootDelta(event.deltaY);
+            if (!isIterationSection(sections[currentIndex])) return;
+            const consumed = handleIterationDelta(event.deltaY);
             if (!consumed) return;
             event.preventDefault();
         }, { capture: true });
@@ -812,9 +803,8 @@
         window.addEventListener('keydown', (event) => {
             if (event.defaultPrevented) return;
             if (!(event.key in KEY_SCROLL_MAP)) return;
-            const consumed = isIterationSection(sections[currentIndex])
-                ? handleIterationDelta(KEY_SCROLL_MAP[event.key])
-                : handleRootDelta(KEY_SCROLL_MAP[event.key]);
+            if (!isIterationSection(sections[currentIndex])) return;
+            const consumed = handleIterationDelta(KEY_SCROLL_MAP[event.key]);
             if (!consumed) return;
             event.preventDefault();
         }, { capture: true });
