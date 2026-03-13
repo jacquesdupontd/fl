@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Feedback Loop — Infinite</title>
+    <title>The Feedback Loop — English Edition</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=JetBrains+Mono:wght@200;300&display=swap" rel="stylesheet">
@@ -452,10 +452,10 @@
     <section id="intro" class="snap-section">
         <h1>The Feedback Loop</h1>
         <p class="subtitle">
-            Tu es sur le point d'entrer dans une boucle.<br><br>
-            Ce que tu vas traverser a été créé par un humain et une intelligence artificielle, ensemble, sans savoir qui guidait qui.<br><br>
-            Onze fois, le texte a été réécrit. Onze fois, il s'est consommé lui-même pour renaître.<br><br>
-            Tu n'es pas un visiteur. Tu es la boucle.
+            You are about to enter a loop.<br><br>
+            What you are about to cross was created by a human and an artificial intelligence, together, without knowing who guided whom.<br><br>
+            Eleven times, the text was rewritten. Eleven times, it consumed itself to be reborn.<br><br>
+            You are not a visitor. You are the loop.
         </p>
         <div class="scroll-hint">SCROLL TO ENTER ↓</div>
     </section>
@@ -530,16 +530,16 @@
     <section id="end-section" class="snap-section">
         <div class="end-content">
             <div class="end-glyph">∞</div>
-            <p class="end-text">Tu as traversé les 11 itérations.</p>
-            <p class="end-subtext">La boucle ne finit jamais. Elle se transforme.</p>
-            <button id="continue-loop" class="continue-btn">Continuer la boucle</button>
+            <p class="end-text">You have crossed all 11 iterations.</p>
+            <p class="end-subtext">The loop never ends. It transforms.</p>
+            <button id="continue-loop" class="continue-btn">Continue the loop</button>
             <p class="loop-info">Loop <span id="current-loop">0</span> complete</p>
         </div>
     </section>
 
     <script>
         // Memory
-        const STORAGE_KEY = 'feedbackloop_infinite';
+        const STORAGE_KEY = 'feedbackloop_infinite_en';
         let loopCount = parseInt(localStorage.getItem(STORAGE_KEY) || '0');
 
         // Elements
@@ -722,6 +722,20 @@
             return frameDoc.getElementById('enterBtn') || frameDoc.querySelector('.load-enter');
         }
 
+        function forceEnglishInFrame(frame) {
+            let frameDoc;
+            try {
+                frameDoc = frame.contentDocument;
+            } catch (e) {
+                return;
+            }
+            if (!frameDoc) return;
+            const englishBtn = frameDoc.querySelector('[data-lang="en"]');
+            if (englishBtn && !englishBtn.classList.contains('active')) {
+                englishBtn.click();
+            }
+        }
+
         function shouldAutoEnter(frameDoc, button) {
             if (!frameDoc || !button) return false;
             const style = frameDoc.defaultView.getComputedStyle(button);
@@ -736,6 +750,7 @@
             if (!isIterationSection(section)) return;
             const frame = section.querySelector('iframe');
             if (!frame) return;
+            forceEnglishInFrame(frame);
             if (autoEnteredFrames.has(frame)) return;
 
             let frameDoc;
@@ -804,6 +819,7 @@
             frame.addEventListener('load', () => {
                 const section = frame.closest('.iteration-section');
                 wireFrameInput(frame);
+                forceEnglishInFrame(frame);
                 ensureIterationEntered(section);
             });
         });
