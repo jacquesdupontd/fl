@@ -668,7 +668,7 @@
         }
 
         function routeWheelToIteration(event) {
-            if (isTransitioning || sectionLockActive) {
+            if (isTransitioning) {
                 event.preventDefault();
                 return;
             }
@@ -680,7 +680,37 @@
             const goingDown = deltaY > 0;
             const targetIndex = currentIndex + (goingDown ? 1 : -1);
 
+            const activeSection = sections[currentIndex];
+            const iterationScroller = getIterationScroller(activeSection);
+
+            if (iterationScroller) {
+                const { iframe, scroller } = iterationScroller;
+                const maxScrollTop = scroller.scrollHeight - scroller.clientHeight;
+                const atTop = scroller.scrollTop <= 0;
+                const atBottom = scroller.scrollTop >= maxScrollTop - 1;
+
+                if ((goingDown && !atBottom) || (!goingDown && !atTop)) {
+                    event.preventDefault();
+                    iframe.contentWindow.scrollBy({ top: deltaY, left: 0, behavior: 'auto' });
+                    return;
+                }
+
+                event.preventDefault();
+                if (sectionLockActive) {
+                    return;
+                }
+
+                if (targetIndex >= 0 && targetIndex < sections.length) {
+                    activateSection(targetIndex, true);
+                }
+                return;
+            }
+
             event.preventDefault();
+            if (sectionLockActive) {
+                return;
+            }
+
             if (targetIndex >= 0 && targetIndex < sections.length) {
                 activateSection(targetIndex, true);
             }
