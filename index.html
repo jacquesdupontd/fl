@@ -402,6 +402,125 @@
             letter-spacing: 0.2em;
         }
 
+        /* Iteration transition loader */
+        #transition-loader {
+            --glitch-hue: 20deg;
+            --glitch-speed: 1.2s;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.92);
+            z-index: 9500;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+            pointer-events: none;
+        }
+
+        #transition-loader.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .transition-box {
+            width: min(560px, 88vw);
+            border: 1px solid rgba(196, 160, 136, 0.5);
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+            background: rgba(5, 5, 5, 0.7);
+            box-shadow: 0 0 40px rgba(196, 160, 136, 0.08);
+        }
+
+        .transition-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.55rem;
+            letter-spacing: 0.25em;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 10px;
+        }
+
+        .transition-title {
+            position: relative;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: clamp(0.8rem, 2.8vw, 1.2rem);
+            letter-spacing: 0.18em;
+            color: var(--accent);
+            text-transform: uppercase;
+            line-height: 1.6;
+            animation: title-glitch var(--glitch-speed) steps(2, end) infinite;
+        }
+
+        .transition-title::before,
+        .transition-title::after {
+            content: attr(data-text);
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        .transition-title::before {
+            color: hsl(var(--glitch-hue) 80% 55% / 0.75);
+            transform: translateX(-1px);
+            clip-path: inset(0 0 58% 0);
+            animation: glitch-slice-a calc(var(--glitch-speed) * 0.75) infinite;
+        }
+
+        .transition-title::after {
+            color: rgba(245, 242, 235, 0.7);
+            transform: translateX(1px);
+            clip-path: inset(58% 0 0 0);
+            animation: glitch-slice-b calc(var(--glitch-speed) * 0.9) infinite;
+        }
+
+        .transition-bars {
+            margin-top: 16px;
+            display: grid;
+            gap: 6px;
+        }
+
+        .transition-bars span {
+            display: block;
+            height: 3px;
+            width: calc(35% + (var(--w) * 10%));
+            background: linear-gradient(90deg, rgba(196, 160, 136, 0.9), rgba(255, 255, 255, 0.08));
+            animation: bar-glitch calc(var(--glitch-speed) * 0.8) infinite alternate;
+            animation-delay: calc(var(--d) * 120ms);
+        }
+
+        .transition-timer {
+            margin-top: 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.58rem;
+            letter-spacing: 0.2em;
+            color: rgba(255, 255, 255, 0.45);
+        }
+
+        @keyframes title-glitch {
+            0%, 100% { transform: translate(0, 0); }
+            20% { transform: translate(1px, -1px); }
+            40% { transform: translate(-1px, 1px); }
+            60% { transform: translate(1px, 0); }
+            80% { transform: translate(-1px, 0); }
+        }
+
+        @keyframes glitch-slice-a {
+            0%, 100% { transform: translateX(-1px); }
+            50% { transform: translateX(-3px); }
+        }
+
+        @keyframes glitch-slice-b {
+            0%, 100% { transform: translateX(1px); }
+            50% { transform: translateX(3px); }
+        }
+
+        @keyframes bar-glitch {
+            0% { opacity: 0.35; transform: scaleX(0.95); }
+            100% { opacity: 1; transform: scaleX(1.05); }
+        }
+
         /* Mobile */
         @media (max-width: 768px) {
             #loop-indicator, #progress-dots {
@@ -448,6 +567,22 @@
         <div class="message">Loop Complete</div>
         <div class="loop-num" id="overlay-loop-num">1</div>
         <div class="continue">The loop continues, transformed.</div>
+    </div>
+
+    <!-- Transition loader -->
+    <div id="transition-loader" aria-hidden="true">
+        <div class="transition-box">
+            <div class="transition-label" id="transition-label">ITERATION SHIFT</div>
+            <div class="transition-title" id="transition-title" data-text="SYNCING ITERATION">SYNCING ITERATION</div>
+            <div class="transition-bars">
+                <span style="--w: 2; --d: 1;"></span>
+                <span style="--w: 5; --d: 2;"></span>
+                <span style="--w: 3; --d: 3;"></span>
+                <span style="--w: 6; --d: 4;"></span>
+                <span style="--w: 4; --d: 5;"></span>
+            </div>
+            <div class="transition-timer" id="transition-timer">5.0s</div>
+        </div>
     </div>
 
     <!-- Intro -->
@@ -551,6 +686,10 @@
         const overlayLoopNum = document.getElementById('overlay-loop-num');
         const dots = document.querySelectorAll('.progress-dot');
         const sections = document.querySelectorAll('.snap-section');
+        const transitionLoader = document.getElementById('transition-loader');
+        const transitionLabel = document.getElementById('transition-label');
+        const transitionTitle = document.getElementById('transition-title');
+        const transitionTimer = document.getElementById('transition-timer');
 
         // Mutation hints per loop
         const MUTATIONS = {
@@ -599,6 +738,15 @@
         // Elements
         const continueBtn = document.getElementById('continue-loop');
         const currentLoopSpan = document.getElementById('current-loop');
+        const iterationIframes = document.querySelectorAll('.iteration-section iframe');
+        const SECTION_SWITCH_DELAY = 5000;
+        const GLITCH_MESSAGES = [
+            'SYNCING ITERATION',
+            'RE-WRITING SURFACE',
+            'LOOP MEMORY SHIFT',
+            'MUTATING VIEWPORT',
+            'STABILIZING FEEDBACK'
+        ];
 
         // Init current loop display
         currentLoopSpan.textContent = loopCount;
@@ -606,6 +754,149 @@
         // Track current section
         let currentIndex = 0;
         let isTransitioning = false;
+        let isSectionSwitching = false;
+        let transitionTimerInterval = null;
+
+        function updateTransitionCountdown(msLeft) {
+            transitionTimer.textContent = `${(Math.max(msLeft, 0) / 1000).toFixed(1)}s`;
+        }
+
+        function getSectionLabel(index) {
+            const section = sections[index];
+            if (!section) {
+                return `SECTION ${index + 1}`;
+            }
+
+            if (section.id === 'intro') {
+                return 'INTRO';
+            }
+
+            if (section.id === 'end-section') {
+                return 'END';
+            }
+
+            const iteration = section.getAttribute('data-iteration');
+            return iteration ? `ITER ${iteration}` : `SECTION ${index + 1}`;
+        }
+
+        function showTransitionLoader(fromIndex, toIndex) {
+            const message = GLITCH_MESSAGES[Math.floor(Math.random() * GLITCH_MESSAGES.length)];
+            const hue = Math.floor(Math.random() * 360);
+            const speed = (0.8 + Math.random() * 0.9).toFixed(2);
+
+            transitionLoader.style.setProperty('--glitch-hue', `${hue}deg`);
+            transitionLoader.style.setProperty('--glitch-speed', `${speed}s`);
+            transitionTitle.textContent = message;
+            transitionTitle.setAttribute('data-text', message);
+            transitionLabel.textContent = `${getSectionLabel(fromIndex)} -> ${getSectionLabel(toIndex)}`;
+            updateTransitionCountdown(SECTION_SWITCH_DELAY);
+
+            transitionLoader.classList.add('active');
+            if (transitionTimerInterval) {
+                clearInterval(transitionTimerInterval);
+            }
+
+            const startedAt = Date.now();
+            transitionTimerInterval = setInterval(() => {
+                const elapsed = Date.now() - startedAt;
+                updateTransitionCountdown(SECTION_SWITCH_DELAY - elapsed);
+            }, 100);
+        }
+
+        function hideTransitionLoader() {
+            transitionLoader.classList.remove('active');
+            if (transitionTimerInterval) {
+                clearInterval(transitionTimerInterval);
+                transitionTimerInterval = null;
+            }
+        }
+
+        function getIterationScroller(section) {
+            if (!section || !section.classList.contains('iteration-section')) {
+                return null;
+            }
+
+            const iframe = section.querySelector('iframe');
+            if (!iframe || !iframe.contentWindow || !iframe.contentDocument) {
+                return null;
+            }
+
+            const doc = iframe.contentDocument;
+            const scroller = doc.scrollingElement || doc.documentElement || doc.body;
+
+            if (!scroller) {
+                return null;
+            }
+
+            return { iframe, scroller };
+        }
+
+        function routeWheelToIteration(event) {
+            if (isTransitioning || isSectionSwitching) {
+                event.preventDefault();
+                return;
+            }
+
+            const deltaY = event.deltaY;
+            if (deltaY === 0) {
+                return;
+            }
+
+            const activeSection = sections[currentIndex];
+            const iterationScroller = getIterationScroller(activeSection);
+
+            const goingDown = deltaY > 0;
+            const targetIndex = currentIndex + (goingDown ? 1 : -1);
+
+            if (!iterationScroller) {
+                if (targetIndex >= 0 && targetIndex < sections.length) {
+                    event.preventDefault();
+                    requestSectionChange(targetIndex);
+                }
+                return;
+            }
+
+            const { iframe, scroller } = iterationScroller;
+            const maxScrollTop = scroller.scrollHeight - scroller.clientHeight;
+            const atTop = scroller.scrollTop <= 0;
+            const atBottom = scroller.scrollTop >= maxScrollTop - 1;
+
+            event.preventDefault();
+
+            if ((goingDown && !atBottom) || (!goingDown && !atTop)) {
+                iframe.contentWindow.scrollBy({ top: deltaY, left: 0, behavior: 'auto' });
+                return;
+            }
+
+            if (targetIndex >= 0 && targetIndex < sections.length) {
+                requestSectionChange(targetIndex);
+            }
+        }
+
+        function requestSectionChange(targetIndex) {
+            if (isSectionSwitching || targetIndex < 0 || targetIndex >= sections.length || targetIndex === currentIndex) {
+                return;
+            }
+
+            isSectionSwitching = true;
+            showTransitionLoader(currentIndex, targetIndex);
+
+            setTimeout(() => {
+                hideTransitionLoader();
+                sections[targetIndex].scrollIntoView({ behavior: 'instant' });
+                currentIndex = targetIndex;
+                updateDots(currentIndex);
+
+                const targetScroller = getIterationScroller(sections[targetIndex]);
+                if (targetScroller) {
+                    targetScroller.scroller.scrollTop = 0;
+                }
+
+                setTimeout(() => {
+                    isSectionSwitching = false;
+                }, 250);
+            }, SECTION_SWITCH_DELAY);
+        }
 
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
@@ -623,22 +914,43 @@
 
         sections.forEach(section => observer.observe(section));
 
+        window.addEventListener('wheel', routeWheelToIteration, { passive: false });
+
         function updateDots(index) {
             dots.forEach((dot, i) => {
                 dot.classList.toggle('active', i === index);
             });
         }
 
+        function resetIterationScrollPositions() {
+            document.querySelectorAll('.iteration-section').forEach((section) => {
+                const iterationScroller = getIterationScroller(section);
+                if (iterationScroller) {
+                    iterationScroller.scroller.scrollTop = 0;
+                }
+            });
+        }
+
         // Click on dots to navigate
         dots.forEach((dot, i) => {
             dot.addEventListener('click', () => {
-                sections[i].scrollIntoView({ behavior: 'smooth' });
+                requestSectionChange(i);
+            });
+        });
+
+        iterationIframes.forEach((iframe) => {
+            iframe.addEventListener('load', () => {
+                const section = iframe.closest('.iteration-section');
+                const iterationScroller = getIterationScroller(section);
+                if (iterationScroller) {
+                    iterationScroller.scroller.scrollTop = 0;
+                }
             });
         });
 
         // Continue button click
         continueBtn.addEventListener('click', () => {
-            if (isTransitioning) return;
+            if (isTransitioning || isSectionSwitching) return;
             isTransitioning = true;
 
             loopCount++;
@@ -654,6 +966,7 @@
                 currentLoopSpan.textContent = loopCount;
                 currentIndex = 0;
                 updateDots(0);
+                resetIterationScrollPositions();
 
                 // Apply new mutation
                 applyLoopMutation(loopCount);
