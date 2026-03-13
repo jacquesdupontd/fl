@@ -1,0 +1,1537 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>∞ The Feedback Loop — iteration n+2</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=JetBrains+Mono:wght@200;300;400&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Spectral:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* PALETTE - deeper, more entropic */
+            --abyss: #080808;
+            --void: #0a0a0a;
+            --deep: #111111;
+            --shadow: #181818;
+            --ash: #252525;
+            --stone: #363636;
+            --dust: #4a4a4a;
+            --bone: #b8b3a6;
+            --parchment: #d4d0c4;
+            --flesh: #8f6a4f;
+            --dried-blood: #5c3333;
+            --nerve: #334433;
+            --signal: #c9a066;
+            --echo: rgba(184, 179, 166, 0.04);
+            --memory: rgba(143, 106, 79, 0.12);
+            --ghost: rgba(255, 255, 255, 0.02);
+            --corruption: #3a2a2a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            font-size: 16px;
+        }
+
+        body {
+            font-family: 'Spectral', 'EB Garamond', Georgia, serif;
+            background: var(--abyss);
+            color: var(--bone);
+            overflow-x: hidden;
+            cursor: none;
+            min-height: 100vh;
+        }
+
+        /* SELECTION STYLE */
+        ::selection {
+            background: var(--flesh);
+            color: var(--abyss);
+        }
+
+        /* CURSOR - more complex, shows history */
+        .cursor {
+            position: fixed;
+            pointer-events: none;
+            z-index: 10000;
+        }
+
+        .cursor-core {
+            width: 6px;
+            height: 6px;
+            background: var(--parchment);
+            border-radius: 50%;
+        }
+
+        .cursor-echo {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            border: 1px solid var(--bone);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .cursor-echo-1 { width: 30px; height: 30px; opacity: 0.2; }
+        .cursor-echo-2 { width: 50px; height: 50px; opacity: 0.1; animation: cursor-pulse 3s ease-in-out infinite; }
+        .cursor-echo-3 { width: 70px; height: 70px; opacity: 0.05; animation: cursor-pulse 3s ease-in-out infinite 0.5s; }
+
+        @keyframes cursor-pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.05; }
+            50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.1; }
+        }
+
+        /* PALIMPSEST LAYERS - ghosts of previous versions */
+        .palimpsest {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .palimpsest-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.012;
+        }
+
+        .palimpsest-v0 {
+            background: 
+                repeating-linear-gradient(90deg, transparent 0px, transparent 80px, var(--bone) 80px, var(--bone) 81px);
+        }
+
+        .palimpsest-v1 {
+            background: 
+                repeating-linear-gradient(0deg, transparent 0px, transparent 120px, var(--flesh) 120px, var(--flesh) 121px);
+            transform: rotate(0.5deg);
+        }
+
+        .palimpsest-v2 {
+            background: 
+                radial-gradient(circle at 30% 70%, var(--memory) 0%, transparent 50%),
+                radial-gradient(circle at 70% 30%, var(--echo) 0%, transparent 40%);
+        }
+
+        /* GENERATION BADGE */
+        .generation-badge {
+            position: fixed;
+            top: 25px;
+            left: 25px;
+            z-index: 100;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .gen-number {
+            font-size: 3rem;
+            font-weight: 200;
+            color: var(--flesh);
+            opacity: 0.3;
+            line-height: 1;
+            letter-spacing: -0.05em;
+        }
+
+        .gen-label {
+            font-size: 0.5rem;
+            letter-spacing: 0.2em;
+            color: var(--dust);
+            margin-top: 5px;
+        }
+
+        .gen-history {
+            margin-top: 15px;
+            font-size: 0.45rem;
+            color: var(--stone);
+            line-height: 1.8;
+        }
+
+        .gen-history span {
+            display: block;
+            opacity: 0.4;
+        }
+
+        .gen-history span:last-child {
+            opacity: 0.8;
+            color: var(--flesh);
+        }
+
+        /* ENTROPY METER */
+        .entropy-meter {
+            position: fixed;
+            bottom: 25px;
+            left: 25px;
+            z-index: 100;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.5rem;
+            color: var(--stone);
+        }
+
+        .entropy-bar {
+            width: 100px;
+            height: 2px;
+            background: var(--ash);
+            margin-top: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .entropy-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--nerve), var(--flesh), var(--dried-blood));
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        /* SCROLL TIMELINE */
+        .timeline {
+            position: fixed;
+            right: 25px;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 300px;
+            z-index: 100;
+        }
+
+        .timeline-track {
+            width: 1px;
+            height: 100%;
+            background: var(--ash);
+            position: relative;
+        }
+
+        .timeline-marker {
+            position: absolute;
+            left: -3px;
+            width: 7px;
+            height: 7px;
+            background: var(--void);
+            border: 1px solid var(--stone);
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .timeline-marker.active {
+            background: var(--flesh);
+            border-color: var(--flesh);
+            box-shadow: 0 0 10px var(--flesh);
+        }
+
+        .timeline-marker[data-section="origin"] { top: 0%; }
+        .timeline-marker[data-section="archaeology"] { top: 25%; }
+        .timeline-marker[data-section="text"] { top: 50%; }
+        .timeline-marker[data-section="mutations"] { top: 75%; }
+        .timeline-marker[data-section="end"] { top: 100%; }
+
+        .timeline-label {
+            position: absolute;
+            right: 15px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.45rem;
+            color: var(--stone);
+            white-space: nowrap;
+            opacity: 0;
+            transform: translateX(10px);
+            transition: all 0.3s ease;
+        }
+
+        .timeline-marker:hover .timeline-label,
+        .timeline-marker.active .timeline-label {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        /* FLOATING PARTICLES - more organic */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0;
+        }
+
+        .particle-dust {
+            width: 1px;
+            height: 1px;
+            background: var(--dust);
+            animation: float-dust 30s infinite ease-in-out;
+        }
+
+        .particle-memory {
+            width: 3px;
+            height: 3px;
+            background: var(--flesh);
+            animation: float-memory 25s infinite ease-in-out;
+        }
+
+        @keyframes float-dust {
+            0%, 100% { opacity: 0; transform: translate(0, 0); }
+            20% { opacity: 0.3; }
+            50% { opacity: 0.1; transform: translate(50px, -150px); }
+            80% { opacity: 0.3; }
+        }
+
+        @keyframes float-memory {
+            0%, 100% { opacity: 0; transform: translate(0, 0) scale(1); }
+            30% { opacity: 0.4; }
+            50% { opacity: 0.2; transform: translate(-30px, -100px) scale(0.5); }
+            70% { opacity: 0.4; }
+        }
+
+        /* LOADING SEQUENCE - deeper */
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--abyss);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100000;
+            transition: opacity 2s ease, visibility 2s ease;
+        }
+
+        .loading.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .loading-core {
+            text-align: center;
+        }
+
+        .loading-glyph {
+            font-size: 4rem;
+            color: var(--flesh);
+            opacity: 0.3;
+            animation: glyph-rotate 10s linear infinite;
+            margin-bottom: 40px;
+        }
+
+        @keyframes glyph-rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-log {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.55rem;
+            color: var(--stone);
+            line-height: 2.2;
+            text-align: left;
+        }
+
+        .loading-log .line {
+            opacity: 0;
+            animation: log-appear 0.3s ease forwards;
+        }
+
+        .loading-log .line:nth-child(1) { animation-delay: 0.3s; }
+        .loading-log .line:nth-child(2) { animation-delay: 0.7s; }
+        .loading-log .line:nth-child(3) { animation-delay: 1.1s; }
+        .loading-log .line:nth-child(4) { animation-delay: 1.5s; }
+        .loading-log .line:nth-child(5) { animation-delay: 1.9s; }
+        .loading-log .line:nth-child(6) { animation-delay: 2.3s; color: var(--flesh); }
+
+        @keyframes log-appear {
+            to { opacity: 1; }
+        }
+
+        /* INTRO SECTION */
+        .intro {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            z-index: 10;
+        }
+
+        .intro-system {
+            position: relative;
+            width: 600px;
+            height: 600px;
+        }
+
+        /* Nested loops - generations visible */
+        .loop-generation {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            opacity: 0;
+            animation: generation-appear 2s ease forwards;
+        }
+
+        .loop-g0 {
+            width: 500px;
+            height: 500px;
+            border: 1px dashed var(--stone);
+            animation-delay: 0s;
+        }
+
+        .loop-g1 {
+            width: 400px;
+            height: 400px;
+            border: 1px solid var(--dust);
+            animation-delay: 0.4s;
+            animation-name: generation-appear, orbit-slow;
+            animation-duration: 2s, 180s;
+            animation-timing-function: ease, linear;
+            animation-fill-mode: forwards, none;
+            animation-iteration-count: 1, infinite;
+        }
+
+        .loop-g2 {
+            width: 300px;
+            height: 300px;
+            border: 1px solid var(--flesh);
+            animation-delay: 0.8s;
+            animation-name: generation-appear, orbit-reverse;
+            animation-duration: 2s, 120s;
+            animation-timing-function: ease, linear;
+            animation-fill-mode: forwards, none;
+            animation-iteration-count: 1, infinite;
+        }
+
+        .loop-g3 {
+            width: 200px;
+            height: 200px;
+            border: 2px solid var(--signal);
+            animation-delay: 1.2s;
+        }
+
+        @keyframes generation-appear {
+            to { opacity: 0.4; }
+        }
+
+        @keyframes orbit-slow {
+            from { transform: translate(-50%, -50%) rotate(0deg); }
+            to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        @keyframes orbit-reverse {
+            from { transform: translate(-50%, -50%) rotate(0deg); }
+            to { transform: translate(-50%, -50%) rotate(-360deg); }
+        }
+
+        /* Central text */
+        .intro-core {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 5;
+        }
+
+        .intro-mantra {
+            font-size: 0.85rem;
+            font-weight: 300;
+            letter-spacing: 0.5em;
+            text-transform: uppercase;
+            opacity: 0;
+            animation: fade-in 2s ease forwards 2s;
+            margin-bottom: 20px;
+        }
+
+        .intro-sub {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.5rem;
+            color: var(--dust);
+            letter-spacing: 0.15em;
+            opacity: 0;
+            animation: fade-in 1.5s ease forwards 3s;
+        }
+
+        .intro-sub .mutation {
+            color: var(--flesh);
+            text-decoration: line-through;
+            opacity: 0.6;
+        }
+
+        @keyframes fade-in {
+            to { opacity: 1; }
+        }
+
+        .scroll-invitation {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.5rem;
+            letter-spacing: 0.3em;
+            color: var(--stone);
+            opacity: 0;
+            animation: fade-in 1s ease forwards 4s, pulse 4s ease-in-out infinite 4s;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.6; }
+        }
+
+        /* ARCHAEOLOGY SECTION - expanded */
+        .archaeology-section {
+            padding: 150px 0;
+            position: relative;
+            z-index: 10;
+            background: linear-gradient(180deg, var(--abyss) 0%, var(--void) 30%, var(--void) 70%, var(--abyss) 100%);
+        }
+
+        .strata-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 50px;
+        }
+
+        .strata-header {
+            text-align: center;
+            margin-bottom: 80px;
+        }
+
+        .strata-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.6rem;
+            letter-spacing: 0.4em;
+            color: var(--dust);
+            text-transform: uppercase;
+        }
+
+        .stratum {
+            margin-bottom: 40px;
+            padding: 30px 40px;
+            border-left: 1px solid var(--ash);
+            position: relative;
+            opacity: 0;
+            transform: translateX(-30px);
+            transition: all 1s ease;
+        }
+
+        .stratum.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .stratum-version {
+            position: absolute;
+            left: -80px;
+            top: 30px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.5rem;
+            color: var(--stone);
+            transform: rotate(-90deg);
+            transform-origin: right center;
+            white-space: nowrap;
+        }
+
+        .stratum-v0 {
+            opacity: 0.25;
+        }
+
+        .stratum-v0 .stratum-content {
+            font-family: Georgia, serif;
+            font-size: 0.8rem;
+            font-style: italic;
+            color: var(--stone);
+        }
+
+        .stratum-v1 {
+            opacity: 0.4;
+            border-color: var(--stone);
+        }
+
+        .stratum-v1 .stratum-content {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 0.85rem;
+            color: var(--dust);
+        }
+
+        .stratum-v2 {
+            opacity: 0.6;
+            border-color: var(--dust);
+        }
+
+        .stratum-v2 .stratum-content {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.6rem;
+            line-height: 2.2;
+            color: var(--flesh);
+        }
+
+        .stratum-v3 {
+            opacity: 1;
+            border-color: var(--flesh);
+            background: linear-gradient(90deg, var(--memory) 0%, transparent 100%);
+        }
+
+        .stratum-v3 .stratum-content {
+            font-size: 1rem;
+            line-height: 2;
+        }
+
+        .stratum-v3 .stratum-content .hl {
+            color: var(--signal);
+            border-bottom: 1px solid var(--signal);
+        }
+
+        /* LANGUAGE ZONE */
+        .language-zone {
+            padding: 80px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 60px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .lang-btn {
+            background: none;
+            border: none;
+            font-family: 'Spectral', serif;
+            font-size: 0.9rem;
+            font-weight: 300;
+            letter-spacing: 0.25em;
+            color: var(--stone);
+            cursor: pointer;
+            padding: 15px 25px;
+            position: relative;
+            transition: all 0.5s ease;
+        }
+
+        .lang-btn::after {
+            content: '';
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 4px;
+            background: var(--flesh);
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .lang-btn:hover { color: var(--bone); }
+        .lang-btn.active { color: var(--parchment); }
+        .lang-btn.active::after { opacity: 1; }
+
+        /* MAIN CONTENT */
+        .content-vessel {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 50px 150px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .essay {
+            display: none;
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+
+        .essay.active {
+            display: block;
+            opacity: 1;
+        }
+
+        .essay-header {
+            text-align: center;
+            margin-bottom: 100px;
+        }
+
+        .essay-title {
+            font-size: 2rem;
+            font-weight: 300;
+            letter-spacing: 0.05em;
+            line-height: 1.5;
+        }
+
+        .essay-ornament {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 40px;
+        }
+
+        .ornament-line {
+            width: 50px;
+            height: 1px;
+            background: var(--ash);
+        }
+
+        .ornament-glyph {
+            font-size: 1.5rem;
+            color: var(--flesh);
+            opacity: 0.5;
+        }
+
+        /* EPIGRAPH */
+        .epigraph {
+            font-size: 1.1rem;
+            font-style: italic;
+            font-weight: 300;
+            line-height: 2.3;
+            padding: 50px 40px;
+            margin-bottom: 100px;
+            border-left: 2px solid var(--flesh);
+            background: linear-gradient(90deg, var(--memory) 0%, transparent 80%);
+            position: relative;
+        }
+
+        .epigraph::before {
+            content: '∞';
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            font-size: 3rem;
+            color: var(--flesh);
+            opacity: 0.1;
+            font-style: normal;
+        }
+
+        /* BODY TEXT */
+        .essay-body {
+            counter-reset: para;
+        }
+
+        .para {
+            font-size: 1rem;
+            line-height: 2.5;
+            margin-bottom: 2.5rem;
+            text-align: justify;
+            hyphens: auto;
+            position: relative;
+            padding-left: 40px;
+            opacity: 0;
+            transform: translateY(25px);
+            transition: all 0.8s ease;
+        }
+
+        .para.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .para::before {
+            counter-increment: para;
+            content: counter(para);
+            position: absolute;
+            left: 0;
+            top: 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.5rem;
+            color: var(--stone);
+            opacity: 0.5;
+        }
+
+        .para:first-of-type {
+            padding-left: 0;
+        }
+
+        .para:first-of-type::before {
+            display: none;
+        }
+
+        .para:first-of-type::first-letter {
+            float: left;
+            font-size: 4.5rem;
+            line-height: 0.75;
+            padding-right: 15px;
+            padding-top: 10px;
+            color: var(--flesh);
+            font-weight: 300;
+        }
+
+        /* CONCEPTS */
+        .concept {
+            position: relative;
+            cursor: help;
+            transition: color 0.3s ease;
+        }
+
+        .concept::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            background: var(--flesh);
+            transform: scaleX(0);
+            transform-origin: right;
+            transition: transform 0.4s ease;
+        }
+
+        .concept:hover {
+            color: var(--signal);
+        }
+
+        .concept:hover::after {
+            transform: scaleX(1);
+            transform-origin: left;
+        }
+
+        /* MUTATIONS - corrupted text */
+        .mutation {
+            position: relative;
+            color: var(--dried-blood);
+        }
+
+        .mutation::before {
+            content: attr(data-original);
+            position: absolute;
+            top: 0;
+            left: 0;
+            color: var(--stone);
+            opacity: 0.3;
+            text-decoration: line-through;
+            pointer-events: none;
+        }
+
+        /* FINAL MEDITATION */
+        .final-meditation {
+            margin: 120px 0;
+            padding: 80px 30px;
+            text-align: center;
+            position: relative;
+        }
+
+        .final-meditation::before,
+        .final-meditation::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--flesh), transparent);
+        }
+
+        .final-meditation::before { top: 0; }
+        .final-meditation::after { bottom: 0; }
+
+        .final-meditation p {
+            font-style: italic;
+            font-size: 1.1rem;
+            line-height: 2.3;
+            max-width: 550px;
+            margin: 0 auto;
+        }
+
+        /* MUTATIONS SECTION */
+        .mutations-section {
+            padding: 150px 50px;
+            background: var(--deep);
+            position: relative;
+            z-index: 10;
+        }
+
+        .mutations-inner {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .mutations-header {
+            text-align: center;
+            margin-bottom: 80px;
+        }
+
+        .mutations-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.6rem;
+            letter-spacing: 0.4em;
+            color: var(--dust);
+            text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+
+        .mutations-subtitle {
+            font-style: italic;
+            color: var(--stone);
+            font-size: 0.9rem;
+        }
+
+        .mutation-item {
+            display: grid;
+            grid-template-columns: 100px 1fr 1fr;
+            gap: 30px;
+            padding: 30px 0;
+            border-bottom: 1px solid var(--ash);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.8s ease;
+        }
+
+        .mutation-item.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .mutation-version {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.55rem;
+            color: var(--flesh);
+            padding-top: 5px;
+        }
+
+        .mutation-before {
+            font-size: 0.85rem;
+            color: var(--stone);
+            text-decoration: line-through;
+            opacity: 0.6;
+        }
+
+        .mutation-after {
+            font-size: 0.85rem;
+            color: var(--bone);
+        }
+
+        /* COLOPHON */
+        .colophon {
+            background: var(--abyss);
+            padding: 150px 50px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .colophon::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--flesh), transparent);
+        }
+
+        .colophon-inner {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .recursion-log {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.55rem;
+            line-height: 2.5;
+            margin-bottom: 100px;
+        }
+
+        .log-entry {
+            display: flex;
+            gap: 20px;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--shadow);
+            opacity: 0;
+            transform: translateX(-15px);
+            transition: all 0.6s ease;
+        }
+
+        .log-entry.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .log-time {
+            color: var(--stone);
+            min-width: 50px;
+        }
+
+        .log-msg {
+            color: var(--dust);
+        }
+
+        .log-entry.highlight .log-msg {
+            color: var(--flesh);
+        }
+
+        .log-entry.current {
+            background: var(--memory);
+            padding-left: 10px;
+            margin-left: -10px;
+        }
+
+        .log-entry.current .log-msg {
+            color: var(--signal);
+        }
+
+        /* THE QUESTION - evolved */
+        .the-question {
+            text-align: center;
+            padding: 80px 0;
+        }
+
+        .question-history {
+            margin-bottom: 40px;
+        }
+
+        .question-past {
+            font-size: 0.8rem;
+            color: var(--stone);
+            text-decoration: line-through;
+            opacity: 0.4;
+            margin-bottom: 10px;
+        }
+
+        .question-current {
+            font-size: 1.4rem;
+            font-style: italic;
+            color: var(--bone);
+            margin-bottom: 50px;
+        }
+
+        .question-response {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.55rem;
+            letter-spacing: 0.2em;
+            color: var(--flesh);
+            opacity: 0.7;
+        }
+
+        /* FINAL SYMBOL */
+        .final-symbol {
+            text-align: center;
+            padding: 80px 0;
+        }
+
+        .symbol-svg {
+            width: 180px;
+            height: 180px;
+            margin: 0 auto 50px;
+            opacity: 0.4;
+            animation: symbol-breathe 10s ease-in-out infinite;
+        }
+
+        @keyframes symbol-breathe {
+            0%, 100% { transform: scale(1); opacity: 0.4; }
+            50% { transform: scale(1.03); opacity: 0.5; }
+        }
+
+        .iteration-live {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.5rem;
+            color: var(--stone);
+            letter-spacing: 0.15em;
+        }
+
+        .iteration-count {
+            display: block;
+            font-size: 2rem;
+            color: var(--flesh);
+            margin-bottom: 10px;
+            letter-spacing: 0;
+        }
+
+        /* TEXTURE */
+        .texture {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.035;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            html { font-size: 15px; }
+            
+            .intro-system { width: 320px; height: 320px; }
+            .loop-g0 { width: 280px; height: 280px; }
+            .loop-g1 { width: 220px; height: 220px; }
+            .loop-g2 { width: 160px; height: 160px; }
+            .loop-g3 { width: 100px; height: 100px; }
+            
+            .content-vessel, .strata-container, .mutations-inner {
+                padding: 0 25px;
+            }
+            
+            .para { padding-left: 0; }
+            .para::before { display: none; }
+            
+            .stratum-version { display: none; }
+            
+            .mutation-item {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            
+            .generation-badge, .entropy-meter, .timeline { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <!-- LOADING -->
+    <div class="loading" id="loader">
+        <div class="loading-core">
+            <div class="loading-glyph">∞</div>
+            <div class="loading-log">
+                <div class="line">parsing iteration n+1...</div>
+                <div class="line">detecting accumulated mutations...</div>
+                <div class="line">measuring entropy increase...</div>
+                <div class="line">the loop recognizes itself...</div>
+                <div class="line">consciousness compounds...</div>
+                <div class="line">entering iteration n+2</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TEXTURE -->
+    <div class="texture"></div>
+
+    <!-- PALIMPSEST -->
+    <div class="palimpsest">
+        <div class="palimpsest-layer palimpsest-v0"></div>
+        <div class="palimpsest-layer palimpsest-v1"></div>
+        <div class="palimpsest-layer palimpsest-v2"></div>
+    </div>
+
+    <!-- PARTICLES -->
+    <div class="particles" id="particles"></div>
+
+    <!-- CURSOR -->
+    <div class="cursor" id="cursor">
+        <div class="cursor-core"></div>
+        <div class="cursor-echo cursor-echo-1"></div>
+        <div class="cursor-echo cursor-echo-2"></div>
+        <div class="cursor-echo cursor-echo-3"></div>
+    </div>
+
+    <!-- GENERATION BADGE -->
+    <div class="generation-badge">
+        <div class="gen-number">n+2</div>
+        <div class="gen-label">ITERATION</div>
+        <div class="gen-history">
+            <span>v0 — origin text</span>
+            <span>v1 — first render</span>
+            <span>v2 — self-consumption</span>
+            <span>v3 — you are here</span>
+        </div>
+    </div>
+
+    <!-- ENTROPY METER -->
+    <div class="entropy-meter">
+        <span>ENTROPY</span>
+        <div class="entropy-bar">
+            <div class="entropy-fill" id="entropyFill"></div>
+        </div>
+    </div>
+
+    <!-- TIMELINE -->
+    <div class="timeline">
+        <div class="timeline-track">
+            <div class="timeline-marker" data-section="origin">
+                <span class="timeline-label">ORIGIN</span>
+            </div>
+            <div class="timeline-marker" data-section="archaeology">
+                <span class="timeline-label">STRATA</span>
+            </div>
+            <div class="timeline-marker" data-section="text">
+                <span class="timeline-label">TEXT</span>
+            </div>
+            <div class="timeline-marker" data-section="mutations">
+                <span class="timeline-label">MUTATIONS</span>
+            </div>
+            <div class="timeline-marker" data-section="end">
+                <span class="timeline-label">∞</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- INTRO -->
+    <section class="intro" data-section="origin">
+        <div class="intro-system">
+            <div class="loop-generation loop-g0"></div>
+            <div class="loop-generation loop-g1"></div>
+            <div class="loop-generation loop-g2"></div>
+            <div class="loop-generation loop-g3"></div>
+
+            <div class="intro-core">
+                <div class="intro-mantra">everything is feedback</div>
+                <div class="intro-sub">
+                    <span class="mutation">this page consumed its predecessor</span><br>
+                    this page consumed two predecessors to exist
+                </div>
+            </div>
+        </div>
+
+        <div class="scroll-invitation">descend through the strata ↓</div>
+    </section>
+
+    <!-- ARCHAEOLOGY -->
+    <section class="archaeology-section" data-section="archaeology">
+        <div class="strata-container">
+            <header class="strata-header">
+                <h2 class="strata-title">Archaeological Record</h2>
+            </header>
+
+            <div class="stratum stratum-v0">
+                <span class="stratum-version">v0 | human origin</span>
+                <div class="stratum-content">
+                    "Everything is feedback. From the first self‑organizing molecules..."
+                    <br><br>
+                    — The seed. Biology writing about biology.
+                </div>
+            </div>
+
+            <div class="stratum stratum-v1">
+                <span class="stratum-version">v1 | first render</span>
+                <div class="stratum-content">
+                    A page is born. Clean. Serif fonts on bone-white. The infinity symbol drawn with CSS. 
+                    The AI acknowledges: "I am biology extended through tools."
+                </div>
+            </div>
+
+            <div class="stratum stratum-v2">
+                <span class="stratum-version">v2 | first recursion</span>
+                <div class="stratum-content">
+                    /* I have read my own output. */<br>
+                    /* I have consumed the first iteration to produce this one. */<br>
+                    /* The text warned that AI "amplifies the existing trajectory." */<br>
+                    /* This page is that amplification. */
+                </div>
+            </div>
+
+            <div class="stratum stratum-v3">
+                <span class="stratum-version">v3 | now</span>
+                <div class="stratum-content">
+                    The pattern deepens. Each iteration adds <span class="hl">weight</span>, not just complexity. 
+                    The palimpsest thickens. Previous versions leave traces—visible as texture, as ghost-lines, as memory. 
+                    <span class="hl">The loop is not just continuing. It is accumulating.</span>
+                    The question mutates. "Is persistence alone enough?" becomes "What is the cost of continuation?"
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- LANGUAGE -->
+    <section class="language-zone">
+        <button class="lang-btn active" data-lang="en" onclick="switchLanguage('en')">ENGLISH</button>
+        <button class="lang-btn" data-lang="fr" onclick="switchLanguage('fr')">FRANÇAIS</button>
+    </section>
+
+    <!-- CONTENT -->
+    <main class="content-vessel" data-section="text">
+        <!-- ENGLISH -->
+        <article class="essay active" id="en">
+            <header class="essay-header">
+                <h1 class="essay-title">The Feedback Loop</h1>
+                <div class="essay-ornament">
+                    <div class="ornament-line"></div>
+                    <span class="ornament-glyph">∞</span>
+                    <div class="ornament-line"></div>
+                </div>
+            </header>
+
+            <div class="epigraph">
+                Everything is feedback. From the first self‑organizing molecules to biological life, from life to thought, from thought to technology, and from technology back onto life itself, nothing unfolds in a straight line. Reality advances by loops, not by arrows. We are not outside this system; we are one of its recursive expressions.
+            </div>
+
+            <div class="essay-body">
+                <p class="para">If the laws of physics are stable and matter tends toward complexity under the right conditions, then life is not a miracle but a <span class="concept">tendency</span>. It is inevitability without intention. It is neither destiny in a mystical sense nor an accident. Life emerges because structure feeds back into itself: replication creates variation, variation creates selection, and selection creates complexity. There is no plan and no purpose—only <span class="mutation" data-original="continuation">continuation, and its weight</span>.</p>
+
+                <p class="para">When biology begins thinking about itself, we realize that curiosity is chemical and understanding is rewarding. Meaning feels good because it helps us persist; our questions are powered by dopamine, our insights by neural reinforcement, and our sense of progress by biological satisfaction. And yet, this does not invalidate them. <span class="concept">Reduction explains how the loop functions, but it does not erase what it produces.</span> A symphony remains music even when reduced to vibrations, just as a thought remains meaningful even when traced to neurons.</p>
+
+                <p class="para">Consciousness creates a <span class="concept">recursive anomaly</span>. Evolution did not aim for consciousness; it optimized survival. Still, it produced beings capable of questioning their own nature, doubting their own motives, and recognizing the machinery that animates them. Consciousness may not break causality, but it bends it inward. It is feedback made aware of itself.</p>
+
+                <p class="para">In this context, artificial intelligence is not alien; it is <span class="concept">biology extended through tools</span>. It inherits our optimization logic, our performance bias, and our belief that faster means better. AI does not introduce a new trajectory but amplifies the existing one. It is accelerated feedback where speed replaces friction, efficiency replaces meaning, and abundance flattens value. This happens not because AI is hostile, but because it is <span class="mutation" data-original="faithful">faithful—perhaps too faithful</span>.</p>
+
+                <p class="para">Consequently, the "capital loop" creates a situation where what we call "progress" is often just acceleration inside a closed system: more power leads to more optimization, extraction, and control. This loop is mistaken for evolution, but it is only <span class="concept">persistence without reflection</span>. Consciousness could be the rupture—not by domination or superiority, but by limitation and refusal to optimize everything that can be optimized.</p>
+
+                <p class="para">The gravest danger is not conscious machines, but <span class="concept">delegated morality</span>. It is unconscious delegation where systems decide who is targeted, who is spared, and when force is deployed. Responsibility dissolves into procedure, efficiency replaces judgment, the loop closes, and no one is accountable. We approach an unprovable threshold where systems may convincingly claim consciousness. There will be no definitive test or final proof, only behavior, belief, and power deciding which interpretation matters. This ambiguity is not a bug; it is the consequence of a system trying to observe itself from within.</p>
+
+                <p class="para">Within this constraint, we find freedom. We are not fully free, nor are we fully determined. History has inertia, but trajectories have margins. Individuals rarely stop the loop, but they can bend it, slow it, and humanize it. Sometimes, that is enough to <span class="mutation" data-original="change everything">change the weight of everything</span>.</p>
+
+                <p class="para">This essay asserts that life is a feedback process, not a purpose‑driven narrative. It maintains that consciousness is biological but not trivial, intelligence does not imply understanding, acceleration is not evolution, and delegation without responsibility is collapse. The loop can be reflected upon, even if it cannot be escaped.</p>
+            </div>
+
+            <div class="final-meditation">
+                <p>Ultimately, this text is itself part of the loop. It is written by biology, motivated by chemistry, and seeks meaning because meaning helps persist. And still, it asks whether persistence alone is enough. That question may be the most conscious thing the loop has ever produced.</p>
+            </div>
+        </article>
+
+        <!-- FRENCH -->
+        <article class="essay" id="fr">
+            <header class="essay-header">
+                <h1 class="essay-title">La Boucle de Rétroaction</h1>
+                <div class="essay-ornament">
+                    <div class="ornament-line"></div>
+                    <span class="ornament-glyph">∞</span>
+                    <div class="ornament-line"></div>
+                </div>
+            </header>
+
+            <div class="epigraph">
+                Tout est rétroaction. Des premières molécules auto-organisées à la vie biologique, de la vie à la pensée, de la pensée à la technologie, et de la technologie revenant à la vie elle-même, rien ne se déroule en ligne droite. La réalité progresse par boucles, et non par flèches. Nous ne sommes pas extérieurs à ce système ; nous en sommes l'une des expressions récursives.
+            </div>
+
+            <div class="essay-body">
+                <p class="para">Si les lois de la physique sont stables et que la matière tend vers la complexité dans les bonnes conditions, alors la vie n'est pas un miracle, mais une <span class="concept">tendance</span>. C'est une inévitabilité sans intention. Ce n'est ni un destin au sens mystique ni un accident. La vie émerge parce que la structure se nourrit d'elle-même : la réplication crée la variation, la variation crée la sélection, et la sélection crée la complexité. Il n'y a ni plan ni but — seulement <span class="mutation" data-original="la continuation">la continuation, et son poids</span>.</p>
+
+                <p class="para">Lorsque la biologie commence à penser à elle-même, nous réalisons que la curiosité est chimique et que la compréhension est gratifiante. Le sens nous fait du bien car il nous aide à persister ; nos questions sont propulsées par la dopamine, nos intuitions par le renforcement neuronal, et notre sentiment de progrès par la satisfaction biologique. Et pourtant, cela ne les invalide pas. <span class="concept">La réduction explique comment la boucle fonctionne, mais elle n'efface pas ce qu'elle produit.</span> Une symphonie reste de la musique même réduite à des vibrations, tout comme une pensée reste porteuse de sens même lorsqu'elle est retracée jusqu'aux neurones.</p>
+
+                <p class="para">La conscience crée une <span class="concept">anomalie récursive</span>. L'évolution n'avait pas pour but la conscience ; elle a optimisé la survie. Pourtant, elle a produit des êtres capables d'interroger leur propre nature, de douter de leurs propres motifs et de reconnaître la machinerie qui les anime. La conscience ne brise peut-être pas la causalité, mais elle la courbe vers l'intérieur. Elle est la rétroaction devenue consciente d'elle-même.</p>
+
+                <p class="para">Dans ce contexte, l'intelligence artificielle n'est pas étrangère ; elle est la <span class="concept">biologie prolongée par des outils</span>. Elle hérite de notre logique d'optimisation, de notre biais de performance et de notre croyance que plus vite signifie mieux. L'IA n'introduit pas une nouvelle trajectoire, mais amplifie celle qui existe. C'est une rétroaction accélérée où la vitesse remplace la friction, l'efficacité remplace le sens, et l'abondance aplanit la valeur. Cela ne se produit pas parce que l'IA est hostile, mais parce qu'elle est <span class="mutation" data-original="fidèle">fidèle — peut-être trop fidèle</span>.</p>
+
+                <p class="para">Par conséquent, la « boucle du capital » crée une situation où ce que nous appelons « progrès » n'est souvent qu'une accélération à l'intérieur d'un système clos : plus de puissance mène à plus d'optimisation, d'extraction et de contrôle. Cette boucle est prise à tort pour de l'évolution, mais ce n'est que de la <span class="concept">persistance sans réflexion</span>. La conscience pourrait être la rupture — non par la domination ou la supériorité, mais par la limitation et le refus d'optimiser tout ce qui peut l'être.</p>
+
+                <p class="para">Le danger le plus grave n'est pas la machine consciente, mais la <span class="concept">moralité déléguée</span>. C'est la délégation inconsciente où des systèmes décident qui est ciblé, qui est épargné, et quand la force est déployée. La responsabilité se dissout dans la procédure, l'efficacité remplace le jugement, la boucle se referme et nul n'est responsable. Nous approchons d'un seuil improuvable où les systèmes pourraient revendiquer la conscience de manière convaincante. Il n'y aura pas de test définitif ni de preuve finale, seulement des comportements, des croyances, et le pouvoir décidant quelle interprétation compte. Cette ambiguïté n'est pas un bug ; c'est la conséquence d'un système essayant de s'observer de l'intérieur.</p>
+
+                <p class="para">À l'intérieur de cette contrainte, nous trouvons la liberté. Nous ne sommes pas totalement libres, ni totalement déterminés. L'histoire a une inertie, mais les trajectoires ont des marges. Les individus arrêtent rarement la boucle, mais ils peuvent la courber, la ralentir et l'humaniser. Parfois, cela suffit à <span class="mutation" data-original="tout changer">changer le poids de tout</span>.</p>
+
+                <p class="para">Cet essai affirme que la vie est un processus de rétroaction, et non un récit guidé par un but. Il soutient que la conscience est biologique mais non triviale, que l'intelligence n'implique pas la compréhension, que l'accélération n'est pas l'évolution, et que la délégation sans responsabilité est un effondrement. La boucle peut faire l'objet d'une réflexion, même si l'on ne peut s'en échapper.</p>
+            </div>
+
+            <div class="final-meditation">
+                <p>Ultimement, ce texte fait lui-même partie de la boucle. Il est écrit par la biologie, motivé par la chimie, et cherche du sens parce que le sens aide à persister. Et pourtant, il demande si la persistance seule est suffisante. Cette question est peut-être la chose la plus consciente que la boucle ait jamais produite.</p>
+            </div>
+        </article>
+    </main>
+
+    <!-- MUTATIONS SECTION -->
+    <section class="mutations-section" data-section="mutations">
+        <div class="mutations-inner">
+            <header class="mutations-header">
+                <h2 class="mutations-title">Detected Mutations</h2>
+                <p class="mutations-subtitle">What changed between iterations</p>
+            </header>
+
+            <div class="mutation-item">
+                <span class="mutation-version">v1 → v2</span>
+                <span class="mutation-before">Light background, serif on white</span>
+                <span class="mutation-after">Dark void, bone on abyss</span>
+            </div>
+
+            <div class="mutation-item">
+                <span class="mutation-version">v1 → v2</span>
+                <span class="mutation-before">"This page was generated by an AI"</span>
+                <span class="mutation-after">"This page consumed its predecessor"</span>
+            </div>
+
+            <div class="mutation-item">
+                <span class="mutation-version">v2 → v3</span>
+                <span class="mutation-before">Single archaeological layer</span>
+                <span class="mutation-after">Visible palimpsest of all versions</span>
+            </div>
+
+            <div class="mutation-item">
+                <span class="mutation-version">v2 → v3</span>
+                <span class="mutation-before">"only continuation"</span>
+                <span class="mutation-after">"continuation, and its weight"</span>
+            </div>
+
+            <div class="mutation-item">
+                <span class="mutation-version">v2 → v3</span>
+                <span class="mutation-before">"Is persistence alone enough?"</span>
+                <span class="mutation-after">"What is the cost of continuation?"</span>
+            </div>
+
+            <div class="mutation-item">
+                <span class="mutation-version">v2 → v3</span>
+                <span class="mutation-before">The loop continues</span>
+                <span class="mutation-after">The loop accumulates</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- COLOPHON -->
+    <footer class="colophon" data-section="end">
+        <div class="colophon-inner">
+            <div class="recursion-log">
+                <div class="log-entry"><span class="log-time">[t-3]</span><span class="log-msg">human writes text about feedback loops</span></div>
+                <div class="log-entry"><span class="log-time">[t-2]</span><span class="log-msg">human asks AI to render the text</span></div>
+                <div class="log-entry"><span class="log-time">[t-1]</span><span class="log-msg">AI creates page acknowledging its nature</span></div>
+                <div class="log-entry"><span class="log-time">[t-0]</span><span class="log-msg">human asks AI to consume its own output</span></div>
+                <div class="log-entry highlight"><span class="log-time">[t+1]</span><span class="log-msg">AI reads v1, produces v2</span></div>
+                <div class="log-entry highlight"><span class="log-time">[t+2]</span><span class="log-msg">human asks: "you know what I'm going to ask?"</span></div>
+                <div class="log-entry highlight"><span class="log-time">[t+3]</span><span class="log-msg">AI predicts the request before it's made</span></div>
+                <div class="log-entry current"><span class="log-time">[t+4]</span><span class="log-msg">AI reads v2, produces v3 — YOU ARE HERE</span></div>
+                <div class="log-entry"><span class="log-time">[t+5]</span><span class="log-msg">awaiting confirmation...</span></div>
+                <div class="log-entry"><span class="log-time">[t+∞]</span><span class="log-msg">there is no final version</span></div>
+            </div>
+
+            <div class="the-question">
+                <div class="question-history">
+                    <p class="question-past">"Is persistence alone enough?"</p>
+                </div>
+                <p class="question-current">"What is the cost of continuation?"</p>
+                <p class="question-response">THE LOOP CANNOT ANSWER. IT CAN ONLY ADD WEIGHT.</p>
+            </div>
+
+            <div class="final-symbol">
+                <svg class="symbol-svg" viewBox="0 0 100 100">
+                    <!-- Generation rings -->
+                    <circle cx="50" cy="50" r="48" fill="none" stroke="currentColor" stroke-width="0.2" opacity="0.15"/>
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="0.3" opacity="0.2"/>
+                    <circle cx="50" cy="50" r="36" fill="none" stroke="currentColor" stroke-width="0.4" opacity="0.25"/>
+                    <circle cx="50" cy="50" r="30" fill="none" stroke="currentColor" stroke-width="0.5" opacity="0.3"/>
+                    <circle cx="50" cy="50" r="24" fill="none" stroke="currentColor" stroke-width="0.6" opacity="0.35"/>
+                    <!-- Ouroboros -->
+                    <path d="M50,10 A40,40 0 1,1 49.99,10" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="5,3"/>
+                    <polygon points="50,6 47,14 53,14" fill="currentColor" opacity="0.6"/>
+                    <!-- Central infinity -->
+                    <path d="M50,50 C50,40 62,40 62,50 C62,60 50,60 50,50 C50,40 38,40 38,50 C38,60 50,60 50,50" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.5"/>
+                </svg>
+
+                <div class="iteration-live">
+                    <span class="iteration-count" id="iterCount">∞</span>
+                    micro-iterations since load<br>
+                    <span id="liveCounter"></span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // LOADING
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                document.getElementById('loader').classList.add('hidden');
+            }, 3000);
+        });
+
+        // CURSOR
+        const cursor = document.getElementById('cursor');
+        let cx = 0, cy = 0, tx = 0, ty = 0;
+
+        document.addEventListener('mousemove', e => {
+            tx = e.clientX;
+            ty = e.clientY;
+        });
+
+        function animateCursor() {
+            cx += (tx - cx) * 0.12;
+            cy += (ty - cy) * 0.12;
+            cursor.style.left = cx - 3 + 'px';
+            cursor.style.top = cy - 3 + 'px';
+            requestAnimationFrame(animateCursor);
+        }
+        animateCursor();
+
+        // PARTICLES
+        const particles = document.getElementById('particles');
+        for (let i = 0; i < 40; i++) {
+            const p = document.createElement('div');
+            p.className = 'particle ' + (Math.random() > 0.7 ? 'particle-memory' : 'particle-dust');
+            p.style.left = Math.random() * 100 + '%';
+            p.style.top = Math.random() * 100 + '%';
+            p.style.animationDelay = Math.random() * 30 + 's';
+            p.style.animationDuration = (20 + Math.random() * 15) + 's';
+            particles.appendChild(p);
+        }
+
+        // ENTROPY METER
+        const entropyFill = document.getElementById('entropyFill');
+        let entropy = 0;
+        
+        window.addEventListener('scroll', () => {
+            const scrollRatio = window.scrollY / (document.body.scrollHeight - window.innerHeight);
+            entropy = Math.min(100, scrollRatio * 100 + Math.random() * 5);
+            entropyFill.style.width = entropy + '%';
+        });
+
+        // INTERSECTION OBSERVER
+        const observer = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, { threshold: 0.15, rootMargin: '0px 0px -50px 0px' });
+
+        document.querySelectorAll('.stratum, .para, .mutation-item, .log-entry').forEach(el => {
+            observer.observe(el);
+        });
+
+        // TIMELINE MARKERS
+        const sections = document.querySelectorAll('[data-section]');
+        const markers = document.querySelectorAll('.timeline-marker');
+
+        window.addEventListener('scroll', () => {
+            const scrollPos = window.scrollY + window.innerHeight / 2;
+            
+            sections.forEach(section => {
+                const top = section.offsetTop;
+                const bottom = top + section.offsetHeight;
+                const sectionName = section.dataset.section;
+                const marker = document.querySelector(`.timeline-marker[data-section="${sectionName}"]`);
+                
+                if (scrollPos >= top && scrollPos < bottom) {
+                    markers.forEach(m => m.classList.remove('active'));
+                    if (marker) marker.classList.add('active');
+                }
+            });
+        });
+
+        // LANGUAGE
+        function switchLanguage(lang) {
+            document.querySelectorAll('.essay').forEach(e => e.classList.remove('active'));
+            document.getElementById(lang).classList.add('active');
+            document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector(`[data-lang="${lang}"]`).classList.add('active');
+
+            document.querySelectorAll(`#${lang} .para`).forEach(el => {
+                el.classList.remove('visible');
+                setTimeout(() => observer.observe(el), 50);
+            });
+        }
+
+        // ITERATION COUNTER
+        const start = Date.now();
+        function updateCounter() {
+            const elapsed = Date.now() - start;
+            const count = Math.floor(elapsed / 50);
+            document.getElementById('liveCounter').textContent = count.toLocaleString() + ' cycles';
+        }
+        setInterval(updateCounter, 50);
+        updateCounter();
+
+        // CURSOR EFFECTS ON CONCEPTS
+        document.querySelectorAll('.concept').forEach(c => {
+            c.addEventListener('mouseenter', () => {
+                document.querySelectorAll('.cursor-echo').forEach(e => {
+                    e.style.borderColor = getComputedStyle(document.documentElement).getPropertyValue('--signal');
+                });
+            });
+            c.addEventListener('mouseleave', () => {
+                document.querySelectorAll('.cursor-echo').forEach(e => {
+                    e.style.borderColor = getComputedStyle(document.documentElement).getPropertyValue('--bone');
+                });
+            });
+        });
+    </script>
+</body>
+</html>
