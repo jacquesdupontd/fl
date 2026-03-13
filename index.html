@@ -607,6 +607,7 @@
         let currentIndex = 0;
         let isTransitioning = false;
         let lockUntil = 0;
+        const autoEnteredFrames = new WeakSet();
 
         const BOUNDARY_LOCK_MS = 5000;
         const KEY_SCROLL_MAP = {
@@ -665,7 +666,7 @@
             if (!frame) return false;
 
             const metrics = getFrameMetrics(frame);
-            if (!metrics) return false;
+            if (!metrics) return true;
 
             const { win, scrollTop, maxScroll } = metrics;
             const down = deltaY > 0;
@@ -696,6 +697,70 @@
             return true;
         }
 
+        function handleRootDelta(deltaY) {
+            const down = deltaY > 0;
+            const up = deltaY < 0;
+            if (!down && !up) return true;
+            if (down) return goToSection(currentIndex + 1);
+            return goToSection(currentIndex - 1);
+        }
+
+        function triggerButtonFlashAndClick(button) {
+            const originalTransition = button.style.transition;
+            const originalBoxShadow = button.style.boxShadow;
+            const originalFilter = button.style.filter;
+
+            button.style.transition = 'box-shadow 180ms ease, filter 180ms ease, transform 180ms ease';
+            button.style.boxShadow = '0 0 0 2px rgba(255,255,255,0.45), 0 0 18px rgba(255,255,255,0.45)';
+            button.style.filter = 'brightness(1.35)';
+
+            button.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window }));
+            button.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window }));
+            button.click();
+
+            setTimeout(() => {
+                button.style.boxShadow = originalBoxShadow;
+                button.style.filter = originalFilter;
+                button.style.transition = originalTransition;
+            }, 260);
+        }
+
+        function getEnterButton(frameDoc) {
+            if (!frameDoc) return null;
+            return frameDoc.getElementById('enterBtn') || frameDoc.querySelector('.load-enter');
+        }
+
+        function shouldAutoEnter(frameDoc, button) {
+            if (!frameDoc || !button) return false;
+            const style = frameDoc.defaultView.getComputedStyle(button);
+            if (style.display === 'none' || style.visibility === 'hidden' || style.pointerEvents === 'none') {
+                return false;
+            }
+            if (button.disabled || button.getAttribute('aria-disabled') === 'true') return false;
+            return !!button.offsetParent || style.position === 'fixed';
+        }
+
+        function ensureIterationEntered(section) {
+            if (!isIterationSection(section)) return;
+            const frame = section.querySelector('iframe');
+            if (!frame) return;
+            if (autoEnteredFrames.has(frame)) return;
+
+            let frameDoc;
+            try {
+                frameDoc = frame.contentDocument;
+            } catch (e) {
+                return;
+            }
+            if (!frameDoc) return;
+
+            const enterBtn = getEnterButton(frameDoc);
+            if (!shouldAutoEnter(frameDoc, enterBtn)) return;
+
+            triggerButtonFlashAndClick(enterBtn);
+            autoEnteredFrames.add(frame);
+        }
+
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
@@ -703,6 +768,9 @@
                     if (index !== -1 && index !== currentIndex) {
                         currentIndex = index;
                         updateDots(index);
+                        ensureIterationEntered(entry.target);
+                        setTimeout(() => ensureIterationEntered(entry.target), 250);
+                        setTimeout(() => ensureIterationEntered(entry.target), 800);
                     }
                 }
             });
@@ -711,6 +779,12 @@
         });
 
         sections.forEach(section => observer.observe(section));
+        document.querySelectorAll('.iteration-section iframe').forEach((frame) => {
+            frame.addEventListener('load', () => {
+                const section = frame.closest('.iteration-section');
+                ensureIterationEntered(section);
+            });
+        });
 
         function updateDots(index) {
             dots.forEach((dot, i) => {
@@ -728,17 +802,19 @@
         });
 
         window.addEventListener('wheel', (event) => {
-            if (!isIterationSection(sections[currentIndex])) return;
-            const consumed = handleIterationDelta(event.deltaY);
+            const consumed = isIterationSection(sections[currentIndex])
+                ? handleIterationDelta(event.deltaY)
+                : handleRootDelta(event.deltaY);
             if (!consumed) return;
             event.preventDefault();
         }, { capture: true });
 
         window.addEventListener('keydown', (event) => {
             if (event.defaultPrevented) return;
-            if (!isIterationSection(sections[currentIndex])) return;
             if (!(event.key in KEY_SCROLL_MAP)) return;
-            const consumed = handleIterationDelta(KEY_SCROLL_MAP[event.key]);
+            const consumed = isIterationSection(sections[currentIndex])
+                ? handleIterationDelta(KEY_SCROLL_MAP[event.key])
+                : handleRootDelta(KEY_SCROLL_MAP[event.key]);
             if (!consumed) return;
             event.preventDefault();
         }, { capture: true });
