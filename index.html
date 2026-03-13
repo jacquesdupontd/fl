@@ -606,14 +606,70 @@
         // Track current section
         let currentIndex = 0;
         let isTransitioning = false;
+        let isBoundaryLocked = false;
+        let boundaryLockTimer = null;
+        let lockedIndex = 0;
+        let hasUserMoved = false;
+
+        const BOUNDARY_LOCK_MS = 5000;
+        const LOCKED_KEYS = new Set([
+            'ArrowUp',
+            'ArrowDown',
+            'PageUp',
+            'PageDown',
+            'Home',
+            'End',
+            ' '
+        ]);
+
+        function setRootScrollLocked(locked) {
+            document.documentElement.style.overflowY = locked ? 'hidden' : 'scroll';
+        }
+
+        function lockBoundaryAt(index) {
+            if (index < 0 || index >= sections.length) return;
+
+            if (boundaryLockTimer) {
+                clearTimeout(boundaryLockTimer);
+            }
+
+            isBoundaryLocked = true;
+            lockedIndex = index;
+            setRootScrollLocked(true);
+
+            sections[index].scrollIntoView({ behavior: 'auto' });
+
+            boundaryLockTimer = setTimeout(() => {
+                isBoundaryLocked = false;
+                setRootScrollLocked(false);
+            }, BOUNDARY_LOCK_MS);
+        }
+
+        function blockRootNavigation(event) {
+            if (!isBoundaryLocked) return;
+            event.preventDefault();
+            event.stopPropagation();
+            sections[lockedIndex].scrollIntoView({ behavior: 'auto' });
+        }
 
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
                     const index = Array.from(sections).indexOf(entry.target);
                     if (index !== -1 && index !== currentIndex) {
+                        if (isBoundaryLocked) {
+                            sections[lockedIndex].scrollIntoView({ behavior: 'auto' });
+                            return;
+                        }
+
                         currentIndex = index;
                         updateDots(index);
+
+                        if (hasUserMoved) {
+                            lockBoundaryAt(index);
+                        }
+
+                        hasUserMoved = true;
                     }
                 }
             });
@@ -632,14 +688,35 @@
         // Click on dots to navigate
         dots.forEach((dot, i) => {
             dot.addEventListener('click', () => {
+                if (isBoundaryLocked) return;
                 sections[i].scrollIntoView({ behavior: 'smooth' });
             });
         });
+
+        window.addEventListener('wheel', blockRootNavigation, { passive: false, capture: true });
+
+        window.addEventListener('touchmove', blockRootNavigation, { passive: false, capture: true });
+
+        window.addEventListener('keydown', (event) => {
+            if (!isBoundaryLocked) return;
+            if (!LOCKED_KEYS.has(event.key)) return;
+            event.preventDefault();
+            event.stopPropagation();
+            sections[lockedIndex].scrollIntoView({ behavior: 'auto' });
+        }, { capture: true });
 
         // Continue button click
         continueBtn.addEventListener('click', () => {
             if (isTransitioning) return;
             isTransitioning = true;
+
+            if (boundaryLockTimer) {
+                clearTimeout(boundaryLockTimer);
+                boundaryLockTimer = null;
+            }
+
+            isBoundaryLocked = false;
+            setRootScrollLocked(false);
 
             loopCount++;
             localStorage.setItem(STORAGE_KEY, loopCount);
@@ -649,11 +726,12 @@
 
             setTimeout(() => {
                 loopOverlay.classList.remove('active');
-                sections[0].scrollIntoView({ behavior: 'instant' });
+                sections[0].scrollIntoView({ behavior: 'auto' });
                 loopNumber.textContent = loopCount;
                 currentLoopSpan.textContent = loopCount;
                 currentIndex = 0;
                 updateDots(0);
+                hasUserMoved = false;
 
                 // Apply new mutation
                 applyLoopMutation(loopCount);
